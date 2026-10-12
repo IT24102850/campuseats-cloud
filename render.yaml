@@ -16,7 +16,7 @@ services:
       - key: ConnectionStrings__Default
         fromDatabase:
           name: campuseats-db
-          property: connectionString
+          property: connectionString   # Render's internal connection string
       - key: Jwt__Key
         generateValue: true     # Render generates the production secret
       - key: Jwt__Issuer

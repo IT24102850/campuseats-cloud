@@ -139,6 +139,12 @@ static string NormalizeConnectionString(string raw)
     var uri = new Uri(raw);
     var credentials = uri.UserInfo.Split(':', 2);
 
+    // A public host (it has a domain) is reached over the internet, so SSL
+    // is mandatory. A platform-internal host is reached over the provider's
+    // private network, where Prefer still encrypts when the server offers
+    // it but does not fail if it does not.
+    var sslMode = uri.Host.Contains('.') ? "Require" : "Prefer";
+
     return string.Join(';', new[]
     {
         $"Host={uri.Host}",
@@ -146,7 +152,7 @@ static string NormalizeConnectionString(string raw)
         $"Database={uri.AbsolutePath.TrimStart('/')}",
         $"Username={Uri.UnescapeDataString(credentials[0])}",
         $"Password={Uri.UnescapeDataString(credentials.Length > 1 ? credentials[1] : string.Empty)}",
-        "SSL Mode=Require",
+        $"SSL Mode={sslMode}",
         "Trust Server Certificate=true"
     });
 }
