@@ -15,9 +15,10 @@ var builder = WebApplication.CreateBuilder(args);
 //   Jwt__Key / Jwt__Issuer / Jwt__Audience -> token signing
 //   FRONTEND_ORIGIN             -> the exact origin allowed by CORS
 // ---------------------------------------------------------------
-var connectionString = builder.Configuration.GetConnectionString("Default")
+var connectionString = NormalizeConnectionString(
+    builder.Configuration.GetConnectionString("Default")
     ?? throw new InvalidOperationException(
-        "ConnectionStrings__Default is not configured.");
+        "ConnectionStrings__Default is not configured."));
 
 // Railway/Render inject PORT; ASPNETCORE_URLS must bind 0.0.0.0 so the
 // platform's proxy can reach the container (not just localhost).
@@ -35,6 +36,7 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 // The data store is now PostgreSQL, so the service is per-request
 // (AddScoped) rather than the AddSingleton used in Lab 03.
 builder.Services.AddScoped<IMenuService, MenuService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddSingleton<TokenService>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -65,7 +67,10 @@ var allowedOrigins = (Environment.GetEnvironmentVariable("FRONTEND_ORIGIN")
 builder.Services.AddCors(o => o.AddPolicy("Frontend", p =>
     p.WithOrigins(allowedOrigins)
      .AllowAnyHeader()
-     .AllowAnyMethod()));
+     .AllowAnyMethod()
+     // Without this the browser hides X-Total-Count from JavaScript and
+     // the menu pager cannot work, even though the response arrives.
+     .WithExposedHeaders("X-Total-Count")));
 
 var app = builder.Build();
 
@@ -117,3 +122,31 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Managed PostgreSQL providers hand out a URI
+// ("postgresql://user:password@host:5432/database"), while Npgsql expects
+// key/value pairs. Accept either shape so the same environment variable
+// works whichever provider hosts the database, and require SSL because
+// every managed Postgres service does.
+static string NormalizeConnectionString(string raw)
+{
+    if (!raw.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        return raw; // already Host=...;Database=...;Username=...;Password=...
+    }
+
+    var uri = new Uri(raw);
+    var credentials = uri.UserInfo.Split(':', 2);
+
+    return string.Join(';', new[]
+    {
+        $"Host={uri.Host}",
+        $"Port={(uri.Port > 0 ? uri.Port : 5432)}",
+        $"Database={uri.AbsolutePath.TrimStart('/')}",
+        $"Username={Uri.UnescapeDataString(credentials[0])}",
+        $"Password={Uri.UnescapeDataString(credentials.Length > 1 ? credentials[1] : string.Empty)}",
+        "SSL Mode=Require",
+        "Trust Server Certificate=true"
+    });
+}

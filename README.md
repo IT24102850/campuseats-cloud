@@ -10,14 +10,14 @@ host deploys from.
 
 | Path        | Tier        | Stack                        | Deployed to        |
 |-------------|-------------|------------------------------|--------------------|
-| `frontend/` | Frontend    | React 19 + Vite              | Vercel             |
-| `backend/`  | Backend API | ASP.NET Core 8 + EF Core     | Railway (Docker)   |
-| —           | Database    | PostgreSQL 17                | Railway PostgreSQL |
+| `frontend/` | Frontend    | React 18 + Vite + TanStack Query | Vercel         |
+| `backend/`  | Backend API | ASP.NET Core 8 + EF Core     | Render (Docker)    |
+| —           | Database    | PostgreSQL 17                | Render PostgreSQL  |
 
 ## How the deployed tiers connect
 
 ```
-Browser → Frontend (Vercel) → Backend API (Railway) → PostgreSQL (Railway)
+Browser → Frontend (Vercel) → Backend API (Render) → PostgreSQL (Render)
                 VITE_API_URL          ConnectionStrings__Default
 ```
 
@@ -39,7 +39,7 @@ and the real values live only in the platform dashboards.
 Vite inlines `VITE_*` variables **at build time**, so the frontend must be
 redeployed after this value changes.
 
-### Backend (Railway)
+### Backend (Render)
 
 | Variable                     | Purpose                                      |
 |------------------------------|----------------------------------------------|
@@ -65,14 +65,27 @@ cd backend && dotnet run
 
 ## API endpoints
 
-| Method | Path             | Auth      | Description              |
-|--------|------------------|-----------|--------------------------|
-| GET    | `/api/menu`      | public    | List menu items          |
-| GET    | `/api/menu/{id}` | public    | One menu item            |
-| POST   | `/api/menu`      | JWT       | Create a menu item       |
-| PUT    | `/api/menu/{id}` | JWT       | Update a menu item       |
-| DELETE | `/api/menu/{id}` | JWT       | Delete a menu item       |
-| POST   | `/api/auth/register` | public | Create an account      |
-| POST   | `/api/auth/login`    | public | Obtain a JWT           |
-| GET    | `/health`        | public    | Status + DB reachability |
-| GET    | `/swagger`       | public    | Interactive API docs     |
+The deployed API serves the exact URL shapes the Lab 02 frontend already
+called against json-server, so only the base URL changed when it moved to
+the cloud.
+
+| Method | Path                      | Auth   | Description                        |
+|--------|---------------------------|--------|------------------------------------|
+| GET    | `/api/menuItems`          | public | Search, filter, sort, page the menu |
+| GET    | `/api/menuItems/{id}`     | public | One menu item                      |
+| PATCH  | `/api/menuItems/{id}`     | public | Partial update (e.g. favourite)    |
+| POST   | `/api/menuItems`          | JWT    | Add a menu item (staff)            |
+| DELETE | `/api/menuItems/{id}`     | JWT    | Remove a menu item (staff)         |
+| GET    | `/api/orders`             | public | Orders, optionally by `studentId`  |
+| GET    | `/api/orders/{id}`        | public | One order                          |
+| POST   | `/api/orders`             | public | Place an order                     |
+| PATCH  | `/api/orders/{id}`        | public | Update status (e.g. `Cancelled`)   |
+| POST   | `/api/auth/register`      | public | Create an account                  |
+| POST   | `/api/auth/login`         | public | Obtain a JWT                       |
+| GET    | `/health`                 | public | Status + database reachability     |
+| GET    | `/swagger`                | public | Interactive API docs               |
+
+`GET /api/menuItems` supports the json-server-style query string the
+frontend sends: `?_page=1&_limit=6&_sort=name&_order=asc&q=kottu&category=Drinks`.
+It returns the total row count in the `X-Total-Count` header, which the
+CORS policy explicitly exposes so the browser lets the pager read it.
