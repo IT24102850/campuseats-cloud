@@ -1,0 +1,28 @@
+# ---- Node / frontend ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ---- environment & secrets (never commit these) ----
+.env
+.env.*
+!.env.example
+
+# ---- .NET / backend ----
+bin/
+obj/
+*.user
+appsettings.Development.local.json
+
+# ---- editors / OS ----
+.vs/
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- platform CLI metadata ----
+.vercel/
+.railway/

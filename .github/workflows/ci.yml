@@ -1,0 +1,39 @@
+# Continuous Integration (from Lab 08). Every push to main is built and
+# checked here; the hosting platforms then handle Continuous Deployment,
+# which together form the CI/CD pipeline described in Lecture 11.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Build frontend (Vite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://example.invalid
+
+  backend:
+    name: Build backend (ASP.NET Core)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet restore
+        working-directory: backend
+      - run: dotnet build --no-restore -c Release
+        working-directory: backend
